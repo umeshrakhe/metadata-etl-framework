@@ -15,6 +15,7 @@ Example pipelines demonstrating all features
 
 Project Structure:
 
+```
 metadata-etl-framework/
 ├── src/
 │   ├── orchestrator/
@@ -69,7 +70,7 @@ metadata-etl-framework/
 ├── requirements.txt
 ├── setup.py
 └── README.md
-
+```
 Include:
 
 Complete working code for all components
