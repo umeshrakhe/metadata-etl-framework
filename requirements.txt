@@ -1,0 +1,56 @@
+# Core ETL Framework Requirements
+
+# Data processing libraries
+pandas>=1.5.0
+polars>=0.15.0
+pyarrow>=10.0.0
+
+# Database connectors
+psycopg2-binary>=2.9.0
+pymysql>=1.0.0
+cx-Oracle>=8.3.0
+sqlalchemy>=1.4.0
+
+# Quality assurance
+pandera>=0.15.0
+
+# Monitoring and system
+psutil>=5.9.0
+prometheus-client>=0.16.0
+
+# Scheduling
+croniter>=1.3.0
+
+# Security and encryption (required for SecurityManager)
+cryptography>=41.0.0
+bcrypt>=4.0.0
+
+# Optional security dependencies (install as needed)
+# PyJWT>=2.6.0          # For API token management
+# boto3>=1.28.0         # For AWS Secrets Manager
+# azure-identity>=1.12.0  # For Azure Key Vault
+# azure-keyvault-secrets>=4.7.0
+# hvac>=2.0.0           # For HashiCorp Vault
+
+# API and web framework
+fastapi>=0.100.0
+uvicorn>=0.23.0
+pydantic>=2.0.0
+
+# Configuration and utilities
+pyyaml>=6.0
+jinja2>=3.1.0
+
+# Logging and monitoring
+structlog>=23.1.0
+
+# Development and testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.5.0
+
+# Optional: Jupyter for interactive development
+# jupyter>=1.0.0
+# jupyterlab>=4.0.0

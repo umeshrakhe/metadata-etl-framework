@@ -1,0 +1,512 @@
+{
+  "templates": {
+    
+    "file_source_template": {
+      "_comment": "Template for file-based sources (CSV, Excel, Parquet, JSON, etc.)",
+      "_supports": "Local files, Network shares, S3, Azure Blob, GCS, SFTP",
+      
+      "source_config": {
+        "source_id": 1,
+        "pipeline_id": 100,
+        "conn_id": 10,
+        "source_name": "Sales Data Files",
+        "source_type": "file",
+        "active": true,
+        "description": "Daily sales transaction files from store systems",
+        
+        "file_location": {
+          "file_path": "/data/sales/incoming/",
+          "file_pattern": "sales_*.csv",
+          "file_format": "csv",
+          "cloud_provider": null,
+          "bucket_name": null,
+          "cloud_region": null,
+          "use_recursive_search": false
+        },
+        
+        "file_options": {
+          "delimiter": ",",
+          "encoding": "utf-8",
+          "has_header": true,
+          "skip_rows": 0,
+          "skip_footer": 0,
+          "sheet_name": "Sheet1",
+          "compression": "none",
+          "quote_char": "\"",
+          "escape_char": "\\",
+          "line_terminator": "\n",
+          "thousands_separator": null,
+          "decimal_separator": "."
+        },
+        
+        "schema_definition": {
+          "column_names": [
+            "transaction_id",
+            "transaction_date",
+            "customer_id",
+            "product_id",
+            "quantity",
+            "unit_price",
+            "total_amount",
+            "store_id",
+            "payment_method"
+          ],
+          "dtype_mapping": {
+            "transaction_id": "string",
+            "transaction_date": "datetime",
+            "customer_id": "int64",
+            "product_id": "string",
+            "quantity": "int32",
+            "unit_price": "float64",
+            "total_amount": "float64",
+            "store_id": "string",
+            "payment_method": "string"
+          },
+          "date_columns": ["transaction_date"],
+          "date_format": "%Y-%m-%d %H:%M:%S",
+          "nullable_columns": ["customer_id"],
+          "required_columns": ["transaction_id", "transaction_date", "total_amount"]
+        },
+        
+        "extraction_strategy": {
+          "extract_type": "incremental",
+          "watermark_column": "transaction_date",
+          "watermark_format": "datetime",
+          "batch_size": 10000,
+          "max_rows": null,
+          "filter_condition": null,
+          "archive_after_read": true,
+          "archive_location": "/data/sales/archive/",
+          "delete_after_read": false,
+          "file_age_threshold_hours": null
+        },
+        
+        "data_quality": {
+          "validate_schema": true,
+          "allow_extra_columns": false,
+          "handle_missing_columns": "error",
+          "null_value_strings": ["NULL", "null", "N/A", ""],
+          "trim_whitespace": true,
+          "remove_duplicates": false,
+          "duplicate_keys": ["transaction_id"]
+        },
+        
+        "performance": {
+          "chunk_size": 50000,
+          "parallel_read": false,
+          "num_workers": 4,
+          "memory_limit_mb": 2048,
+          "use_lazy_loading": false
+        },
+        
+        "error_handling": {
+          "on_error": "log_and_continue",
+          "bad_lines": "skip",
+          "max_errors": 100,
+          "quarantine_bad_files": true,
+          "quarantine_location": "/data/sales/quarantine/"
+        }
+      }
+    },
+    
+    "oracle_db_source_template": {
+      "_comment": "Template for Oracle Database sources",
+      "_supports": "Full extraction, Incremental, CDC, Partitioned queries",
+      
+      "source_config": {
+        "source_id": 2,
+        "pipeline_id": 100,
+        "conn_id": 20,
+        "source_name": "Oracle ERP Sales",
+        "source_type": "oracle_db",
+        "active": true,
+        "description": "Sales data from Oracle ERP database",
+        
+        "database_info": {
+          "host": "oracle-prod.company.com",
+          "port": 1521,
+          "service_name": "ERPDB",
+          "schema": "SALES_SCHEMA",
+          "username": "etl_user",
+          "connection_type": "service_name",
+          "wallet_location": null,
+          "tns_alias": null
+        },
+        
+        "query_config": {
+          "extraction_method": "query",
+          "table_name": "SALES_TRANSACTIONS",
+          "query": "SELECT * FROM SALES_TRANSACTIONS WHERE transaction_date >= :watermark_value",
+          "use_custom_query": true,
+          "custom_query": null,
+          "columns": [
+            "TRANSACTION_ID",
+            "TRANSACTION_DATE",
+            "CUSTOMER_ID",
+            "PRODUCT_ID",
+            "QUANTITY",
+            "UNIT_PRICE",
+            "TOTAL_AMOUNT",
+            "DISCOUNT",
+            "TAX_AMOUNT",
+            "STORE_ID",
+            "SALES_REP_ID",
+            "PAYMENT_METHOD",
+            "ORDER_STATUS",
+            "CREATED_BY",
+            "CREATED_DATE",
+            "MODIFIED_DATE"
+          ],
+          "exclude_columns": ["INTERNAL_NOTES", "AUDIT_TIMESTAMP"],
+          "column_aliases": {
+            "TRANSACTION_ID": "transaction_id",
+            "TRANSACTION_DATE": "transaction_date"
+          }
+        },
+        
+        "extraction_strategy": {
+          "extract_type": "incremental",
+          "watermark_column": "MODIFIED_DATE",
+          "watermark_data_type": "timestamp",
+          "initial_watermark": "2024-01-01 00:00:00",
+          "watermark_offset_minutes": -5,
+          "batch_size": 50000,
+          "use_pagination": true,
+          "partition_column": "TRANSACTION_DATE",
+          "partition_strategy": "monthly",
+          "parallel_partitions": 4
+        },
+        
+        "performance_tuning": {
+          "fetch_size": 10000,
+          "array_size": 1000,
+          "prefetch_rows": 10000,
+          "use_bind_variables": true,
+          "enable_query_hints": true,
+          "query_hints": "/*+ PARALLEL(4) INDEX(SALES_TRANSACTIONS IDX_MODIFIED_DATE) */",
+          "connection_pool_size": 5,
+          "connection_pool_max": 10,
+          "statement_cache_size": 50
+        },
+        
+        "data_transformation": {
+          "convert_lob_to_string": true,
+          "handle_clob": "stream",
+          "handle_blob": "base64",
+          "date_format": "YYYY-MM-DD HH24:MI:SS",
+          "timestamp_format": "YYYY-MM-DD HH24:MI:SS.FF6",
+          "number_precision": 2,
+          "trim_char_columns": true,
+          "null_representation": null
+        },
+        
+        "cdc_configuration": {
+          "enable_cdc": false,
+          "cdc_method": "logminer",
+          "start_scn": null,
+          "end_scn": null,
+          "capture_operations": ["INSERT", "UPDATE", "DELETE"],
+          "excluded_operations": [],
+          "archive_log_destination": null
+        },
+        
+        "constraints": {
+          "where_clause": "ORDER_STATUS IN ('COMPLETED', 'SHIPPED')",
+          "having_clause": null,
+          "order_by": "MODIFIED_DATE ASC",
+          "limit": null,
+          "offset": null
+        },
+        
+        "data_quality": {
+          "validate_referential_integrity": true,
+          "foreign_key_checks": [
+            {
+              "local_column": "CUSTOMER_ID",
+              "foreign_table": "CUSTOMERS",
+              "foreign_column": "CUSTOMER_ID"
+            }
+          ],
+          "check_duplicates": true,
+          "unique_key": ["TRANSACTION_ID"],
+          "handle_null_in_watermark": "skip"
+        },
+        
+        "monitoring": {
+          "log_query_plan": true,
+          "log_execution_time": true,
+          "log_row_count": true,
+          "alert_on_zero_rows": false,
+          "alert_on_row_count_deviation": true,
+          "expected_row_count_range": {
+            "min": 1000,
+            "max": 100000
+          }
+        },
+        
+        "error_handling": {
+          "retry_on_connection_error": true,
+          "max_retries": 3,
+          "retry_delay_seconds": 60,
+          "timeout_seconds": 3600,
+          "handle_deadlock": "retry",
+          "handle_lock_timeout": "retry"
+        }
+      }
+    },
+    
+    "rest_api_source_template": {
+      "_comment": "Template for REST API sources",
+      "_supports": "GET/POST requests, Pagination, Authentication, Rate limiting",
+      
+      "source_config": {
+        "source_id": 3,
+        "pipeline_id": 100,
+        "conn_id": 30,
+        "source_name": "Salesforce API",
+        "source_type": "rest_api",
+        "active": true,
+        "description": "Customer and opportunity data from Salesforce REST API",
+        
+        "api_endpoint": {
+          "base_url": "https://api.salesforce.com",
+          "api_version": "v56.0",
+          "endpoint_path": "/services/data/v56.0/query",
+          "full_url": "https://api.salesforce.com/services/data/v56.0/query",
+          "protocol": "https",
+          "port": 443
+        },
+        
+        "authentication": {
+          "auth_type": "oauth2",
+          "oauth2_config": {
+            "grant_type": "client_credentials",
+            "token_url": "https://login.salesforce.com/services/oauth2/token",
+            "client_id": "${SALESFORCE_CLIENT_ID}",
+            "client_secret": "${SALESFORCE_CLIENT_SECRET}",
+            "scope": "api",
+            "token_expiry_seconds": 3600,
+            "refresh_token": null,
+            "auto_refresh": true
+          },
+          "basic_auth": null,
+          "bearer_token": null,
+          "api_key_config": null
+        },
+        
+        "request_config": {
+          "http_method": "GET",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": "ETL-Framework/1.0"
+          },
+          "query_parameters": {
+            "q": "SELECT Id, Name, CreatedDate, LastModifiedDate FROM Account WHERE LastModifiedDate >= {watermark_value}"
+          },
+          "body_template": null,
+          "body_format": "json",
+          "timeout_seconds": 300,
+          "verify_ssl": true,
+          "ssl_cert_path": null
+        },
+        
+        "pagination": {
+          "enabled": true,
+          "pagination_type": "offset",
+          "page_size": 1000,
+          "page_size_param": "limit",
+          "offset_param": "offset",
+          "page_param": null,
+          "next_page_token_path": "nextRecordsUrl",
+          "total_count_path": "totalSize",
+          "has_more_path": "done",
+          "max_pages": null,
+          "start_page": 0
+        },
+        
+        "response_parsing": {
+          "response_format": "json",
+          "data_path": "records",
+          "root_element": null,
+          "flatten_nested": true,
+          "nested_separator": "_",
+          "array_handling": "explode",
+          "date_parsing": {
+            "auto_detect": true,
+            "date_columns": ["CreatedDate", "LastModifiedDate"],
+            "date_format": "%Y-%m-%dT%H:%M:%S.%fZ"
+          }
+        },
+        
+        "extraction_strategy": {
+          "extract_type": "incremental",
+          "watermark_column": "LastModifiedDate",
+          "watermark_format": "iso8601",
+          "watermark_in_request": "query_param",
+          "watermark_parameter_name": "watermark_value",
+          "initial_watermark": "2024-01-01T00:00:00Z",
+          "lookback_window_minutes": 5,
+          "batch_requests": false,
+          "batch_size": null
+        },
+        
+        "rate_limiting": {
+          "enabled": true,
+          "requests_per_second": 5,
+          "requests_per_minute": 100,
+          "requests_per_hour": 5000,
+          "rate_limit_strategy": "fixed_window",
+          "backoff_strategy": "exponential",
+          "initial_backoff_seconds": 1,
+          "max_backoff_seconds": 300,
+          "respect_retry_after_header": true
+        },
+        
+        "data_transformation": {
+          "column_mapping": {
+            "Id": "account_id",
+            "Name": "account_name",
+            "CreatedDate": "created_date",
+            "LastModifiedDate": "modified_date"
+          },
+          "data_type_conversion": {
+            "account_id": "string",
+            "account_name": "string",
+            "created_date": "datetime",
+            "modified_date": "datetime"
+          },
+          "default_values": {},
+          "calculated_columns": [],
+          "filter_conditions": null
+        },
+        
+        "error_handling": {
+          "retry_on_error": true,
+          "max_retries": 3,
+          "retry_status_codes": [429, 500, 502, 503, 504],
+          "retry_delay_seconds": 60,
+          "exponential_backoff": true,
+          "timeout_retry": true,
+          "handle_partial_success": true,
+          "log_failed_requests": true,
+          "quarantine_failed_responses": false
+        },
+        
+        "monitoring": {
+          "log_requests": true,
+          "log_responses": false,
+          "log_response_time": true,
+          "track_api_quota": true,
+          "alert_on_quota_threshold": 90,
+          "alert_on_consecutive_failures": 5,
+          "response_time_threshold_ms": 5000
+        },
+        
+        "caching": {
+          "enable_response_cache": false,
+          "cache_ttl_seconds": 300,
+          "cache_key_components": ["endpoint", "query_params"],
+          "bypass_cache_param": null
+        },
+        
+        "webhook_config": {
+          "is_webhook": false,
+          "webhook_url": null,
+          "webhook_secret": null,
+          "webhook_events": [],
+          "verify_signature": false
+        }
+      }
+    }
+  },
+  
+  "extension_examples": {
+    
+    "file_source_s3_extension": {
+      "_comment": "Example extending file template for AWS S3",
+      "extends": "file_source_template",
+      "file_location": {
+        "cloud_provider": "s3",
+        "bucket_name": "company-data-lake",
+        "cloud_region": "us-east-1",
+        "file_path": "sales/raw/",
+        "aws_access_key_id": "${AWS_ACCESS_KEY}",
+        "aws_secret_access_key": "${AWS_SECRET_KEY}",
+        "use_iam_role": true,
+        "iam_role_arn": "arn:aws:iam::123456789:role/etl-s3-access"
+      }
+    },
+    
+    "oracle_db_partition_extension": {
+      "_comment": "Example extending Oracle template for partitioned extraction",
+      "extends": "oracle_db_source_template",
+      "extraction_strategy": {
+        "extract_type": "full",
+        "partition_strategy": "range",
+        "partition_column": "TRANSACTION_DATE",
+        "partition_ranges": [
+          {"start": "2024-01-01", "end": "2024-03-31"},
+          {"start": "2024-04-01", "end": "2024-06-30"},
+          {"start": "2024-07-01", "end": "2024-09-30"},
+          {"start": "2024-10-01", "end": "2024-12-31"}
+        ],
+        "parallel_partitions": 4
+      }
+    },
+    
+    "rest_api_graphql_extension": {
+      "_comment": "Example extending REST API template for GraphQL",
+      "extends": "rest_api_source_template",
+      "api_endpoint": {
+        "base_url": "https://api.github.com/graphql",
+        "endpoint_path": "/graphql"
+      },
+      "request_config": {
+        "http_method": "POST",
+        "body_template": {
+          "query": "query { repository(owner: \"octocat\", name: \"Hello-World\") { issues(first: 100, after: \"{cursor}\") { edges { node { id title createdAt } } pageInfo { hasNextPage endCursor } } } }"
+        },
+        "body_format": "graphql"
+      },
+      "pagination": {
+        "pagination_type": "cursor",
+        "next_page_token_path": "data.repository.issues.pageInfo.endCursor",
+        "has_more_path": "data.repository.issues.pageInfo.hasNextPage"
+      },
+      "response_parsing": {
+        "data_path": "data.repository.issues.edges",
+        "root_element": "node"
+      }
+    }
+  },
+  
+  "metadata_table_insert_examples": {
+    
+    "insert_file_source": {
+      "_comment": "SQL to insert file source configuration",
+      "sql": "INSERT INTO ETL_METADATA.SOURCE_CONFIG (source_id, pipeline_id, conn_id, source_name, source_type, extract_type, config_json, active) VALUES (1, 100, 10, 'Sales Data Files', 'file', 'incremental', '{...file_source_template...}', 1)"
+    },
+    
+    "insert_oracle_source": {
+      "_comment": "SQL to insert Oracle DB source configuration",
+      "sql": "INSERT INTO ETL_METADATA.SOURCE_CONFIG (source_id, pipeline_id, conn_id, source_name, source_type, extract_type, query, watermark_column, config_json, active) VALUES (2, 100, 20, 'Oracle ERP Sales', 'oracle_db', 'incremental', 'SELECT * FROM SALES_TRANSACTIONS WHERE MODIFIED_DATE >= :watermark_value', 'MODIFIED_DATE', '{...oracle_db_source_template...}', 1)"
+    },
+    
+    "insert_api_source": {
+      "_comment": "SQL to insert REST API source configuration",
+      "sql": "INSERT INTO ETL_METADATA.SOURCE_CONFIG (source_id, pipeline_id, conn_id, source_name, source_type, extract_type, config_json, active) VALUES (3, 100, 30, 'Salesforce API', 'rest_api', 'incremental', '{...rest_api_source_template...}', 1)"
+    }
+  },
+  
+  "usage_notes": {
+    "configuration_storage": "Store complete JSON in SOURCE_CONFIG.config_json (CLOB column)",
+    "environment_variables": "Use ${VAR_NAME} syntax for secrets, resolve at runtime",
+    "validation": "Validate JSON schema before insertion using JSON Schema validator",
+    "versioning": "Track config changes in AUDIT_TRAIL table",
+    "encryption": "Encrypt sensitive fields (passwords, API keys) before storing",
+    "extension_pattern": "Use 'extends' field to inherit base template and override specific fields",
+    "dynamic_parameters": "Support runtime parameter substitution: {watermark_value}, {execution_date}",
+    "testing": "Test configuration with dry_run flag before production use"
+  }
+}

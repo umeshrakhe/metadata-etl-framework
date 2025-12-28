@@ -1,0 +1,355 @@
+# ETL Framework Configuration
+# Main configuration file for the metadata-driven ETL framework
+
+# Framework Settings
+framework:
+  name: "metadata-etl-framework"
+  version: "1.0.0"
+  environment: "development"  # development, staging, production
+  log_level: "INFO"
+  enable_audit: true
+  enable_metrics: true
+
+# Database Configuration
+database:
+  metadata:
+    type: "postgresql"  # postgresql, mysql, sqlite
+    host: "localhost"
+    port: 5432
+    database: "etl_metadata"
+    username: "etl_user"
+    password: ""  # Use environment variable or secret management
+    ssl_mode: "require"
+    connection_timeout: 30
+    max_connections: 10
+    connection_pool: true
+
+  execution:
+    type: "postgresql"
+    host: "localhost"
+    port: 5432
+    database: "etl_execution"
+    username: "etl_user"
+    password: ""
+    ssl_mode: "require"
+    connection_timeout: 30
+    max_connections: 5
+
+  data_quality:
+    type: "postgresql"
+    host: "localhost"
+    port: 5432
+    database: "etl_quality"
+    username: "etl_user"
+    password: ""
+    ssl_mode: "require"
+    connection_timeout: 30
+    max_connections: 5
+
+# Security Configuration
+security:
+  encryption:
+    algorithm: "AES-256-GCB"
+    key_rotation_days: 90
+    master_key: ""  # Use environment variable
+
+  authentication:
+    method: "database"  # database, ldap, oauth
+    token_expiry_hours: 24
+    session_timeout_minutes: 60
+
+  authorization:
+    enable_rbac: true
+    default_role: "etl_user"
+    admin_role: "etl_admin"
+
+  ssl:
+    enabled: true
+    cert_path: "certs/server.crt"
+    key_path: "certs/server.key"
+    ca_cert_path: "certs/ca.crt"
+
+# Orchestrator Configuration
+orchestrator:
+  max_concurrent_pipelines: 5
+  default_timeout_seconds: 3600
+  retry_attempts: 3
+  retry_delay_seconds: 60
+  enable_dependency_checking: true
+  enable_resource_limits: true
+
+  scheduler:
+    enabled: true
+    timezone: "UTC"
+    max_schedule_ahead_days: 30
+    cron_check_interval_seconds: 30
+
+  queue:
+    enabled: true
+    max_queue_size: 100
+    priority_levels: 5
+    worker_heartbeat_seconds: 30
+
+# Connector Configuration
+connectors:
+  default_timeout_seconds: 300
+  retry_attempts: 3
+  retry_delay_seconds: 10
+  enable_connection_pooling: true
+
+  database:
+    max_connections_per_source: 5
+    query_timeout_seconds: 600
+    enable_query_logging: false
+
+  api:
+    max_concurrent_requests: 10
+    request_timeout_seconds: 60
+    rate_limit_per_minute: 100
+    enable_retry_on_429: true
+
+  file:
+    supported_formats: ["csv", "json", "parquet", "excel"]
+    max_file_size_mb: 1000
+    enable_compression: true
+    temp_directory: "/tmp/etl_files"
+
+# Transform Configuration
+transform:
+  engine_selector:
+    default_engine: "pandas"  # pandas, polars, spark
+    memory_threshold_mb: 1000
+    enable_fallback: true
+
+  performance:
+    max_workers: 4
+    chunk_size: 10000
+    enable_parallel_processing: true
+    memory_limit_mb: 2048
+
+  validation:
+    enable_schema_validation: true
+    strict_type_checking: false
+    allow_null_transformations: false
+
+# Quality Configuration
+quality:
+  profiling:
+    enable_auto_profiling: true
+    sample_size: 10000
+    enable_statistics: true
+    enable_pattern_detection: true
+
+  validation:
+    enable_real_time_checks: false
+    fail_on_quality_errors: false
+    quarantine_bad_records: true
+    max_violations_threshold: 1000
+
+  monitoring:
+    enable_quality_metrics: true
+    alert_on_score_drop: true
+    score_drop_threshold: 0.1
+    dashboard_refresh_minutes: 60
+
+# Monitoring Configuration
+monitoring:
+  metrics:
+    enabled: true
+    collection_interval_seconds: 60
+    retention_days: 90
+    enable_prometheus: false
+    prometheus_port: 9090
+
+  alerting:
+    enabled: true
+    channels: ["email", "slack"]  # email, slack, pagerduty, webhook
+    escalation_levels: 3
+    default_severity: "warning"
+
+  logging:
+    level: "INFO"
+    format: "json"
+    max_file_size_mb: 100
+    max_files: 10
+    enable_structured_logging: true
+
+  health_checks:
+    enabled: true
+    interval_seconds: 300
+    timeout_seconds: 30
+    failure_threshold: 3
+
+# Error Recovery Configuration
+error_recovery:
+  max_retries: 3
+  backoff_factor: 2.0
+  initial_delay: 1.0
+  max_delay: 300.0
+  jitter_range: 0.1
+
+  circuit_breaker:
+    failure_threshold: 5
+    timeout_seconds: 300
+    monitoring_window_seconds: 600
+
+  checkpoint:
+    enabled: true
+    batch_size: 1000
+    interval_minutes: 5
+    retention_days: 7
+
+  quarantine:
+    enabled: true
+    max_records: 10000
+    retention_days: 30
+    auto_cleanup: true
+
+# Performance Configuration
+performance:
+  memory:
+    max_heap_mb: 4096
+    gc_threshold_mb: 2048
+    enable_memory_monitoring: true
+
+  cpu:
+    max_workers: 8
+    enable_cpu_affinity: false
+    thread_pool_size: 20
+
+  io:
+    buffer_size_kb: 64
+    enable_async_io: true
+    max_concurrent_files: 10
+
+  caching:
+    enabled: true
+    max_cache_size_mb: 512
+    ttl_seconds: 3600
+    cache_type: "memory"  # memory, redis, file
+
+# API Configuration
+api:
+  rest:
+    enabled: true
+    host: "0.0.0.0"
+    port: 8000
+    workers: 4
+    timeout_seconds: 30
+    enable_cors: true
+    allowed_origins: ["*"]
+
+  cli:
+    enabled: true
+    log_level: "INFO"
+    enable_progress_bars: true
+    max_parallel_jobs: 3
+
+# Deployment Configuration
+deployment:
+  docker:
+    enabled: false
+    image_name: "etl-framework"
+    image_tag: "latest"
+    registry: ""
+    build_context: "."
+
+  kubernetes:
+    enabled: false
+    namespace: "etl"
+    replicas: 1
+    cpu_limit: "2"
+    memory_limit: "4Gi"
+    service_account: "etl-service-account"
+
+  aws:
+    enabled: false
+    region: "us-east-1"
+    ecs_cluster: "etl-cluster"
+    task_definition: "etl-task"
+    service_name: "etl-service"
+
+# External Integrations
+integrations:
+  slack:
+    enabled: false
+    webhook_url: ""
+    channel: "#etl-alerts"
+    username: "ETL-Bot"
+
+  email:
+    enabled: false
+    smtp_server: ""
+    smtp_port: 587
+    use_tls: true
+    username: ""
+    password: ""
+    from_address: "etl-framework@company.com"
+
+  pagerduty:
+    enabled: false
+    integration_key: ""
+    service_name: "ETL Framework"
+
+  prometheus:
+    enabled: false
+    pushgateway_url: ""
+    job_name: "etl-framework"
+
+# Feature Flags
+features:
+  incremental_load: true
+  data_lineage: true
+  quality_monitoring: true
+  performance_analytics: true
+  error_recovery: true
+  security_manager: true
+  audit_logging: true
+  api_access: true
+  cli_interface: true
+  web_dashboard: false  # Future feature
+
+# Environment-specific overrides
+environments:
+  development:
+    database:
+      metadata:
+        database: "etl_metadata_dev"
+      execution:
+        database: "etl_execution_dev"
+      data_quality:
+        database: "etl_quality_dev"
+    log_level: "DEBUG"
+    monitoring:
+      alerting:
+        enabled: false
+
+  staging:
+    database:
+      metadata:
+        database: "etl_metadata_staging"
+      execution:
+        database: "etl_execution_staging"
+      data_quality:
+        database: "etl_quality_staging"
+    monitoring:
+      alerting:
+        channels: ["email"]
+
+  production:
+    database:
+      metadata:
+        database: "etl_metadata_prod"
+      execution:
+        database: "etl_execution_prod"
+      data_quality:
+        database: "etl_quality_prod"
+    security:
+      ssl:
+        enabled: true
+    monitoring:
+      alerting:
+        channels: ["email", "slack", "pagerduty"]
+    performance:
+      caching:
+        enabled: true
