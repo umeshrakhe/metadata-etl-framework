@@ -8,13 +8,16 @@ Command-line interface for managing ETL pipelines, executions, and monitoring.
 import argparse
 import sys
 import json
+import yaml
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+base_path=str(Path(__file__).parent.parent)
+print(base_path)
+sys.path.append(base_path)
 
 try:
     from utils.database_utils import DatabaseUtils, ConnectionConfig, DatabaseType
@@ -31,7 +34,8 @@ except ImportError as e:
 class ETLCLI:
     """ETL Framework Command Line Interface"""
 
-    def __init__(self):
+    def __init__(self, config_file: str = 'config/config.yaml'):
+        
         self.config_loader = None
         self.db_utils = None
         self.orchestrator = None
@@ -40,9 +44,29 @@ class ETLCLI:
         # Setup logging
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            format='%(asctime)s - %(name)s - %(levelname)s - %(lineno)d - %(message)s'
+        )
+        self.config = self.setup_config(config_file)
+
+    def setup_config(self, config_file="config.yaml"): 
+        with open(config_file, "r") as f: 
+            config = yaml.safe_load(f)
+        
+        db_config = config['database']['metadata']
+        connection_config = ConnectionConfig(
+            host=db_config['host'],
+            port=db_config['port'],
+            database=db_config['database'],
+            username=db_config['username'],
+            password=db_config['password'],
+            db_type=DatabaseType(db_config['type'])
         )
 
+        self.db_utils = DatabaseUtils(connection_config)
+        #self.orchestrator = OrchestratorManager(self.db_utils, config)
+        
+        return config 
+    
     def load_config(self, config_file: str) -> bool:
         """Load configuration from file"""
         try:
@@ -61,6 +85,7 @@ class ETLCLI:
             )
 
             self.db_utils = DatabaseUtils(connection_config)
+            print(f"db_utils: {self.db_utils}   ")
             self.orchestrator = OrchestratorManager(self.db_utils, config)
 
             return True
@@ -72,10 +97,12 @@ class ETLCLI:
     def setup_database(self, schema_files: List[str]) -> bool:
         """Setup database schemas"""
         try:
+            
             schema_manager = SchemaManager(self.db_utils)
 
             for schema_file in schema_files:
                 schema_path = Path(schema_file)
+                self.logger.debug(f"Applying schema from file: {schema_path}")
                 if not schema_path.exists():
                     self.logger.error(f"Schema file not found: {schema_file}")
                     continue
@@ -94,7 +121,7 @@ class ETLCLI:
             return True
 
         except Exception as e:
-            self.logger.error(f"Database setup failed: {e}")
+            self.logger.error(f"Database setup failed: {e}",exc_info=True)
             return False
 
     def list_pipelines(self, status: Optional[str] = None, limit: int = 50) -> None:
@@ -522,7 +549,7 @@ Examples:
     logging.getLogger().setLevel(getattr(logging, args.log_level))
 
     # Initialize CLI
-    cli = ETLCLI()
+    cli = ETLCLI(args.config)
 
     if args.command != 'setup-db':
         # Load configuration for all commands except setup-db

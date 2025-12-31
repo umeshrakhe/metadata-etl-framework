@@ -115,9 +115,11 @@ class SchemaManager:
                 applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 applied_by VARCHAR(255),
                 PRIMARY KEY (schema_name, version)
-            )
+            );
         """
-
+        if self.db_utils is None:
+            raise SchemaVersionError("Database utilities not initialized")
+        
         # Add indexes for better performance
         if self.db_utils.config.db_type == DatabaseType.POSTGRESQL:
             create_table_sql += f"""
@@ -134,6 +136,7 @@ class SchemaManager:
                 ON {self.version_table}(applied_at);
             """
 
+        #print(create_table_sql)
         result = self.db_utils.execute_query(create_table_sql)
         if not result.success:
             self.logger.error(f"Failed to create schema tracking table: {result.error_message}")

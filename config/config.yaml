@@ -18,7 +18,7 @@ database:
     port: 5432
     database: "etl_metadata"
     username: "etl_user"
-    password: ""  # Use environment variable or secret management
+    password: "etl@123"  # Use environment variable or secret management
     ssl_mode: "require"
     connection_timeout: 30
     max_connections: 10
@@ -30,7 +30,7 @@ database:
     port: 5432
     database: "etl_execution"
     username: "etl_user"
-    password: ""
+    password: "etl@123"
     ssl_mode: "require"
     connection_timeout: 30
     max_connections: 5
