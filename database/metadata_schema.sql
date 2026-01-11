@@ -1,11 +1,4 @@
--- ETL Metadata Schema
--- Core metadata tables for ETL pipeline management and tracking
 
--- Enable UUID extension for PostgreSQL
--- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- ETL Pipelines Table
--- Stores pipeline definitions and configurations
 CREATE TABLE etl_pipelines (
     pipeline_id VARCHAR(50) PRIMARY KEY,
     pipeline_name VARCHAR(255) NOT NULL,

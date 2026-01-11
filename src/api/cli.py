@@ -43,7 +43,7 @@ class ETLCLI:
 
         # Setup logging
         logging.basicConfig(
-            level=logging.INFO,
+            level=logging.DEBUG,
             format='%(asctime)s - %(name)s - %(levelname)s - %(lineno)d - %(message)s'
         )
         self.config = self.setup_config(config_file)
@@ -62,8 +62,9 @@ class ETLCLI:
             db_type=DatabaseType(db_config['type'])
         )
 
+        self.logger.debug(f"Database connection config: {connection_config}")
         self.db_utils = DatabaseUtils(connection_config)
-        #self.orchestrator = OrchestratorManager(self.db_utils, config)
+        self.orchestrator = OrchestratorManager(self.db_utils, config)
         
         return config 
     
@@ -71,7 +72,7 @@ class ETLCLI:
         """Load configuration from file"""
         try:
             self.config_loader = ConfigLoader(config_file)
-            config = self.config_loader.load_config()
+            config = self.config_loader.load_complete_configuration()
 
             # Initialize database connection
             db_config = config['database']['metadata']
@@ -99,10 +100,10 @@ class ETLCLI:
         try:
             
             schema_manager = SchemaManager(self.db_utils)
-
+            base_path=str(Path(__file__).parent.parent.parent)
             for schema_file in schema_files:
-                schema_path = Path(schema_file)
-                self.logger.debug(f"Applying schema from file: {schema_path}")
+                schema_path = Path(base_path + "/" + schema_file)
+                #self.logger.debug(f"Applying schema from file: {schema_path}")
                 if not schema_path.exists():
                     self.logger.error(f"Schema file not found: {schema_file}")
                     continue

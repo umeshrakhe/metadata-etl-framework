@@ -8,14 +8,20 @@ error recovery, orchestration, data quality, and monitoring.
 """
 
 import sys
+import os
 import time
+#from networkx import config
+import yaml
 import logging
+import argparse
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, Any
 
+
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+#sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 # Configure logging
 logging.basicConfig(
@@ -34,6 +40,10 @@ try:
     from transform.transform_engine import TransformEngine
     from monitoring.sla_monitor import SLAMonitor
     from monitoring.alert_manager import AlertManager
+    from  utils.database_utils import ConnectionConfig, DatabaseType, DatabaseUtils
+    from utils.error_recovery import ErrorRecoveryManager
+    from utils.incremental_load_manager import IncrementalLoadManager
+    from utils.security_manager import SecurityManager
 
     FRAMEWORK_AVAILABLE = True
 except ImportError as e:
@@ -135,7 +145,9 @@ SAMPLE_DATA_QUALITY_RULES = [
 class ETLDemo:
     """Complete ETL Framework Demonstration"""
 
-    def __init__(self):
+    def __init__(self,config_file: str = "config.yaml"):
+        self.config_file = config_file
+        self.configs = None
         self.db_utils = None
         self.security_manager = None
         self.incremental_manager = None
@@ -153,16 +165,18 @@ class ETLDemo:
         """Setup demo environment with SQLite database"""
         try:
             logger.info("Setting up demo environment...")
+            with open(self.config_file, "r") as f: 
+                self.configs = yaml.safe_load(f)
 
             # Create SQLite database for demo
-            db_path = ":memory:"  # In-memory database for demo
+            db_config = self.configs['database']['metadata']
             connection_config = ConnectionConfig(
-                host="",
-                port=0,
-                database=db_path,
-                username="",
-                password="",
-                db_type=DatabaseType.SQLITE
+                host=db_config['host'],
+                port=db_config['port'],
+                database=db_config['database'],
+                username=db_config['username'],
+                password=db_config['password'],
+                db_type=DatabaseType(db_config['type'])
             )
 
             self.db_utils = DatabaseUtils(connection_config)
@@ -173,26 +187,29 @@ class ETLDemo:
             self.error_recovery = ErrorRecoveryManager(self.db_utils)
             
             # Initialize required orchestrator components
-            self.config_loader = ConfigLoader()
-            self.engine_selector = EngineSelector()
-            self.transform_engine = TransformEngine()
-            self.sla_monitor = SLAMonitor(self.db_utils)
-            self.alert_manager = AlertManager(self.db_utils)
+            self.config_loader = ConfigLoader(self.db_utils)
+            self.engine_selector = EngineSelector(db_connection=self.db_utils, config_loader=self.config_loader)
+            self.transform_engine = TransformEngine(db_connection=self.db_utils)
             
+            self.alert_manager = AlertManager(self.db_utils)
+            self.sla_monitor = SLAMonitor(db_connection=self.db_utils, alert_manager=self.alert_manager)
+            self.connector_factory = ConnectorFactory(db_connection=self.db_utils, config_loader=self.config_loader)
+            self.dq_engine = DQEngine(db_connection=self.db_utils, config_loader=self.config_loader)
+
             self.orchestrator = OrchestratorManager(
                 config_loader=self.config_loader,
-                connector_factory=ConnectorFactory(),
+                connector_factory=self.connector_factory,#ConnectorFactory(db_connection=self.db_utils, config_loader=self.config_loader),
                 engine_selector=self.engine_selector,
                 transform_engine=self.transform_engine,
-                dq_engine=DQEngine(self.db_utils),
+                dq_engine=self.dq_engine,
                 sla_monitor=self.sla_monitor,
                 alert_manager=self.alert_manager,
                 db_connection=self.db_utils
             )
             
-            self.dq_engine = DQEngine(self.db_utils)
+            
             self.performance_monitor = PerformanceMonitor(self.db_utils)
-            self.connector_factory = ConnectorFactory()
+            
 
             logger.info("Demo environment setup complete")
             return True
@@ -546,11 +563,40 @@ class ETLDemo:
         logger.info("="*80)
 
 
-def main():
+def main(config_file: str, log_level: str = 'INFO') -> None:
     """Main demonstration entry point"""
-    demo = ETLDemo()
+    print(f"ETL Framework Demo - Log Level: {config_file}, {log_level}")
+    #config = setup_config(config_file)
+    demo = ETLDemo(config_file=config_file)
+    
     demo.run_complete_demo()
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(
+        description="ETL Framework CLI",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+            Examples:
+            etl --config config.yaml setup-db
+            etl --config config.yaml pipelines list
+            etl --config config.yaml pipeline show my_pipeline
+            etl --config config.yaml pipeline execute my_pipeline
+            etl --config config.yaml executions list --status running
+            etl --config config.yaml execution status exec_123
+            etl --config config.yaml health
+            """
+    )
+
+    parser.add_argument('--config', '-c', type=str, required=True,help='Configuration file path')
+    parser.add_argument('--log-level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],default='DEBUG', help='Logging level')
+
+    args = parser.parse_args()
+
+    if not args.config:
+        parser.print_help()
+        exit(1)
+
+     
+    
+    main(args.config, args.log_level)
